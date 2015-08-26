@@ -1,0 +1,121 @@
+<!doctype html>
+<html><head>
+  <meta charset="utf-8">
+  <title>AF7TB ham homepage</title>
+  <style>
+    body {
+      padding: 1em;
+      font-family: sans-serif;
+      color: #224;
+    }
+    a { color: #11A; }
+    #grid_square {
+      display: inline-block;
+      border: 1px solid #EEE;
+      padding: 1em;
+    }
+    #grid_square h2 { text-align: center; }
+    #grid_square .group { text-align: right; }
+    #grid_square .spinner {
+      font-family: monospace;
+      font-size: smaller;
+      color: #CCC;
+    }
+    
+    footer {
+      margin-top: 3em;
+      font-size: smaller;
+    }
+  </style>
+</head><body>
+  <h1>natevw's ham homepage</h1>
+  
+  <p>
+  This is the amateur radio scrapbook of <a href="https://www.qrz.com/db/AF7TB">AF7TB</a>, known as <a href="http://exts.ch/">natevw</a> elsewhere on the web.
+  </p>
+  
+  <div id="grid_square">
+    <h2>QTH Utility</h2>
+    <div class="group">
+      <label>Latitude: <input class="lat"></input></label><br>
+      <label>Longitude: <input class="lon"></input></label><br>
+      <span class="spinner" style="display: none;">requesting…</span> <button type="button">Auto-locate</button><br>
+      <label><a href="https://en.wikipedia.org/wiki/Maidenhead_Locator_System">Grid square</a>: <input readonly class="sqr"></input></label>
+    </div>
+  </div>
+  <script>
+    var latField = document.querySelector('#grid_square .lat'),
+        lonField = document.querySelector('#grid_square .lon'),
+        sqrField = document.querySelector('#grid_square .sqr'),
+        spinner = document.querySelector('#grid_square .spinner');
+    latField.addEventListener('input', function () {
+      var parts = this.value.split(/,\s*/);
+      if (parts.length > 1) {
+          latField.value = parts[0];
+          lonField.value = parts[1];
+          lonField.focus();
+      }
+      updateSquare();
+    }, false);
+    lonField.addEventListener('input', updateSquare, false);
+    function updateSquare() {
+      sqrField.value = calcSquare(+latField.value, +lonField.value);
+    }
+    
+    function calcSquare(lat, lon) {
+      function extend(arr, step, divs) {
+        var val,
+            x = arr.pop(),
+            idx = Math.floor(x/step),
+            rem = x - idx * step;
+        if (divs === 10) {
+          val = idx.toFixed();
+        } else if (divs === 18) {
+          val = "ABCDEFGHIJKLMNOPQRR"[idx];
+        } else if (divs === 24) {
+          val = "abcdefghijklmnopqrstuvwxx"[idx];
+        } else throw Error("Unsupported base!");
+        arr.push(val);
+        arr.push(rem);
+        return arr;
+      }
+      function zip() {
+          var out = [],
+              len = arguments[0].length;
+          for (var i = 0; i < len; i += 1) {
+            for (var j = 0; j < arguments.length; j += 1) {
+              out.push(arguments[j][i]);
+            }
+          }
+          return out;
+      }
+      
+      var latArr = extend(extend(extend([lat+90], 10, 18), 1, 10), 2.5/60, 24),
+          lonArr = extend(extend(extend([lon+180], 20, 18), 2, 10), 5/60, 24);
+      latArr.pop();
+      lonArr.pop();
+      // var lat = 42.862943, lon = -97.541669, result = "EN12fu";
+      return zip(lonArr, latArr).join('');
+    }
+    
+    document.querySelector('#grid_square button').addEventListener('click', function () {
+      spinner.style.display = 'inline';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        spinner.style.display = 'none';
+        latField.value = pos.coords.latitude;
+        lonField.value = pos.coords.longitude;
+        updateSquare();
+      }, function (err) {
+        spinner.style.display = 'none';
+        alert(err.message);
+      }, {
+        enableHighAccuracy: true,
+        timeout: 30e3,
+        maximumAge: 0
+      });
+      
+    }, false);
+  </script>
+  
+  <footer>© 2015 Nathan Vander Wilt. All rights reserved.</footer>
+</body></html>
